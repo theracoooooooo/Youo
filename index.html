@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Flappy Bhuu 🐤</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: skyblue;
+      overflow: hidden;
+      font-family: sans-serif;
+      touch-action: manipulation;
+    }
+
+    canvas {
+      display: block;
+      margin: auto;
+      background: linear-gradient(to bottom, #87CEEB, #fff);
+    }
+
+    #message {
+      position: absolute;
+      top: 20px;
+      width: 100%;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #ff3399;
+    }
+  </style>
+</head>
+<body>
+  <div id="message"></div>
+  <canvas id="gameCanvas" width="320" height="480"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let frames = 0;
+    const DEGREE = Math.PI / 180;
+
+    const sprite = new Image();
+    sprite.src = "https://i.imgur.com/6X3C9eR.png"; // bird sprite
+
+    const BIRD = {
+      x: 50,
+      y: 150,
+      w: 34,
+      h: 26,
+      gravity: 0.25,
+      jump: 4.6,
+      speed: 0,
+      rotation: 0,
+
+      draw: function () {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        ctx.drawImage(sprite, 276, 112, this.w, this.h, -this.w / 2, -this.h / 2, this.w, this.h);
+        ctx.restore();
+      },
+
+      flap: function () {
+        this.speed = -this.jump;
+      },
+
+      update: function () {
+        this.speed += this.gravity;
+        this.y += this.speed;
+
+        if (this.y + this.h / 2 >= canvas.height) {
+          gameState = "over";
+        }
+
+        if (this.speed >= this.jump) {
+          this.rotation = 90 * DEGREE;
+        } else {
+          this.rotation = -25 * DEGREE;
+        }
+      },
+
+      reset: function () {
+        this.speed = 0;
+        this.y = 150;
+      }
+    };
+
+    const pipes = [];
+    const pipeWidth = 50;
+    const pipeGap = 120;
+    const pipeSpeed = 2;
+
+    let score = 0;
+    let gameState = "getReady";
+
+    function drawPipes() {
+      pipes.forEach(pipe => {
+        ctx.fillStyle = "#33cc33";
+        ctx.fillRect(pipe.x, pipe.y, pipeWidth, canvas.height);
+        ctx.fillRect(pipe.x, pipe.y + pipeGap + 100, pipeWidth, canvas.height);
+      });
+    }
+
+    function updatePipes() {
+      if (frames % 100 === 0) {
+        let topY = -Math.floor(Math.random() * 150);
+        pipes.push({ x: canvas.width, y: topY, passed: false });
+      }
+
+      pipes.forEach((pipe, index) => {
+        pipe.x -= pipeSpeed;
+
+        // Collision check
+        if (
+          BIRD.x + BIRD.w > pipe.x && BIRD.x < pipe.x + pipeWidth &&
+          (BIRD.y < pipe.y + canvas.height || BIRD.y + BIRD.h > pipe.y + pipeGap + 100)
+        ) {
+          gameState = "over";
+        }
+
+        // Scoring
+        if (!pipe.passed && pipe.x + pipeWidth < BIRD.x) {
+          score++;
+          pipe.passed = true;
+
+          if (score === 100) {
+            document.getElementById("message").innerText = "🎉 Surprise Unlocked 🎉";
+            setTimeout(() => {
+              location.href = "https://your-birthday-site.github.io"; // replace with actual surprise URL
+            }, 3000);
+          }
+        }
+
+        // Remove off-screen
+        if (pipe.x + pipeWidth < 0) pipes.splice(index, 1);
+      });
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "#000";
+      ctx.font = "bold 24px Arial";
+      ctx.fillText("Score: " + score, 10, 30);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      BIRD.draw();
+      drawPipes();
+      drawScore();
+    }
+
+    function update() {
+      BIRD.update();
+      updatePipes();
+    }
+
+    function loop() {
+      update();
+      draw();
+      frames++;
+      if (gameState !== "over") {
+        requestAnimationFrame(loop);
+      } else {
+        document.getElementById("message").innerText = "Game Over 💔 Tap to Restart";
+      }
+    }
+
+    canvas.addEventListener("touchstart", handleInput);
+    canvas.addEventListener("mousedown", handleInput);
+
+    function handleInput() {
+      if (gameState === "getReady") {
+        gameState = "playing";
+        loop();
+      }
+      if (gameState === "playing") {
+        BIRD.flap();
+      }
+      if (gameState === "over") {
+        pipes.length = 0;
+        score = 0;
+        BIRD.reset();
+        gameState = "getReady";
+        document.getElementById("message").innerText = "Tap to Start!";
+        draw();
+      }
+    }
+
+    // Initial message
+    document.getElementById("message").innerText = "Tap to Start!";
+    draw();
+  </script>
+</body>
+</html>
